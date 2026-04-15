@@ -793,7 +793,10 @@ class Painter {
      */
     doForward(steps, linePart) {
         steps = Number(steps);
-        if (!Number.isFinite(steps)) steps = 1;
+        if (!Number.isFinite(steps)) {
+            this.turtles.activity.errorMsg(NANERRORMSG);
+            return;
+        }
 
         this._processColor();
 

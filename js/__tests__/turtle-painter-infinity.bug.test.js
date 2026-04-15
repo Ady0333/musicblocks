@@ -5,6 +5,7 @@
 const Painter = require("../turtle-painter");
 
 global.WRAP = true;
+global.NANERRORMSG = "Not a number.";
 global.getcolor = jest.fn(() => [50, 100, "rgba(255,0,49,1)"]);
 global.getMunsellColor = jest.fn(() => "rgba(128,64,32,1)");
 global.hex2rgb = jest.fn(() => "rgba(255,0,49,1)");
@@ -15,7 +16,8 @@ const createMockTurtle = () => ({
         screenY2turtleY: y => y,
         turtleX2screenX: x => x,
         turtleY2screenY: y => y,
-        scale: 1
+        scale: 1,
+        activity: { errorMsg: jest.fn() }
     },
     activity: { refreshCanvas: jest.fn() },
     container: { x: 0, y: 0, rotation: 0 },
@@ -62,20 +64,17 @@ describe("BUG: TurtlePainter.doForward with Infinity hangs the main thread", () 
         spy.mockRestore();
     });
 
-    test("doForward(Infinity) normalizes to 1 — executes normally, no infinite loop", () => {
-        const painter = new Painter(createMockTurtle());
-        const ABORT_AT = 5000;
+    test("doForward(Infinity) shows error and returns early — no movement, no infinite loop", () => {
+        const mockTurtle = createMockTurtle();
+        const painter = new Painter(mockTurtle);
         let iterations = 0;
         const spy = jest.spyOn(painter, "_move").mockImplementation(() => {
             iterations++;
-            if (iterations >= ABORT_AT) throw new Error("ABORT_INFINITE_LOOP");
         });
 
-        // Non-finite steps clamped to 1 — function runs its full pipeline,
-        // _move is called a small finite number of times, no runaway loop.
-        expect(() => painter.doForward(Infinity)).not.toThrow();
-        expect(iterations).toBeGreaterThan(0);
-        expect(iterations).toBeLessThan(ABORT_AT);
+        painter.doForward(Infinity);
+        expect(iterations).toBe(0);
+        expect(mockTurtle.turtles.activity.errorMsg).toHaveBeenCalledWith(global.NANERRORMSG);
         spy.mockRestore();
     });
 });
