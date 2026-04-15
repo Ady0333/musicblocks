@@ -792,7 +792,8 @@ class Painter {
      * @param steps - the number of steps the turtle goes forward by
      */
     doForward(steps, linePart) {
-        if (!Number.isFinite(Number(steps))) steps = 0;
+        steps = Number(steps);
+        if (!Number.isFinite(steps)) steps = 1;
 
         this._processColor();
 

@@ -62,7 +62,7 @@ describe("BUG: TurtlePainter.doForward with Infinity hangs the main thread", () 
         spy.mockRestore();
     });
 
-    test("doForward(Infinity) treats step as zero — no movement, no infinite loop", () => {
+    test("doForward(Infinity) normalizes to 1 — executes normally, no infinite loop", () => {
         const painter = new Painter(createMockTurtle());
         const ABORT_AT = 5000;
         let iterations = 0;
@@ -71,9 +71,10 @@ describe("BUG: TurtlePainter.doForward with Infinity hangs the main thread", () 
             if (iterations >= ABORT_AT) throw new Error("ABORT_INFINITE_LOOP");
         });
 
-        // Must not throw and must not loop — steps is clamped to 0 so _move
-        // is called at most once (the straight-line path, zero distance).
+        // Non-finite steps clamped to 1 — function runs its full pipeline,
+        // _move is called a small finite number of times, no runaway loop.
         expect(() => painter.doForward(Infinity)).not.toThrow();
+        expect(iterations).toBeGreaterThan(0);
         expect(iterations).toBeLessThan(ABORT_AT);
         spy.mockRestore();
     });
