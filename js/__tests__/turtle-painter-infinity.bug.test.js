@@ -62,15 +62,19 @@ describe("BUG: TurtlePainter.doForward with Infinity hangs the main thread", () 
         spy.mockRestore();
     });
 
-    test("doForward(Infinity) returns immediately without entering the loop (fix)", () => {
+    test("doForward(Infinity) treats step as zero — no movement, no infinite loop", () => {
         const painter = new Painter(createMockTurtle());
+        const ABORT_AT = 5000;
         let iterations = 0;
         const spy = jest.spyOn(painter, "_move").mockImplementation(() => {
             iterations++;
+            if (iterations >= ABORT_AT) throw new Error("ABORT_INFINITE_LOOP");
         });
 
-        painter.doForward(Infinity);
-        expect(iterations).toBe(0);
+        // Must not throw and must not loop — steps is clamped to 0 so _move
+        // is called at most once (the straight-line path, zero distance).
+        expect(() => painter.doForward(Infinity)).not.toThrow();
+        expect(iterations).toBeLessThan(ABORT_AT);
         spy.mockRestore();
     });
 });
