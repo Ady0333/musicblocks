@@ -792,6 +792,8 @@ class Painter {
      * @param steps - the number of steps the turtle goes forward by
      */
     doForward(steps, linePart) {
+        if (!Number.isFinite(Number(steps))) return;
+
         this._processColor();
 
         if (!this._fillState) {
@@ -1336,7 +1338,7 @@ class Painter {
         this.turtle.penstrokes.image = null;
         this.turtle.ctx.beginPath();
         this.turtle.ctx.clearRect(0, 0, this.turtle.canvas.width, this.turtle.canvas.height);
-        if (turtles.c1ctx != null) {
+        if (turtles.c1ctx !== null) {
             turtles.c1ctx.beginPath();
             turtles.c1ctx.clearRect(
                 0,
@@ -1366,7 +1368,7 @@ class Painter {
         );
 
         const turtles = this.turtles;
-        if (turtles.canvas1 == null) {
+        if (turtles.canvas1 === null) {
             turtles.gx = this.turtle.ctx.canvas.width;
             turtles.gy = this.turtle.ctx.canvas.height;
             turtles.canvas1 = document.createElement("canvas");
