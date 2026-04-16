@@ -888,6 +888,9 @@ function Synth() {
                     console.error(`Error processing sample ${sampleName}:`, e);
                     reject(e);
                 }
+            }, err => {
+                console.error(`Failed to load sample module for ${sampleName}:`, err);
+                reject(err);
             });
         });
     };
