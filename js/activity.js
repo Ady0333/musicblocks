@@ -8341,10 +8341,16 @@ class Activity {
                     };
 
                     midiReader.onload = e => {
-                        const midi = new Midi(e.target.result);
-
-                        console.debug(midi);
-                        midiImportBlocks(midi);
+                        try {
+                            const midi = new Midi(e.target.result);
+                            console.debug(midi);
+                            midiImportBlocks(midi);
+                        } catch (err) {
+                            console.error(err);
+                            that.errorMsg(
+                                _("Cannot load project from the file. Please check the file type.")
+                            );
+                        }
                     };
 
                     const file = that.fileChooser.files[0];
@@ -8438,10 +8444,16 @@ class Activity {
                     }, 200);
                 };
                 midiReader.onload = e => {
-                    const midi = new Midi(e.target.result);
-
-                    console.debug(midi);
-                    midiImportBlocks(midi);
+                    try {
+                        const midi = new Midi(e.target.result);
+                        console.debug(midi);
+                        midiImportBlocks(midi);
+                    } catch (err) {
+                        console.error(err);
+                        that.errorMsg(
+                            _("Cannot load project from the file. Please check the file type.")
+                        );
+                    }
                 };
 
                 // Music Block Parser from abc to MB
