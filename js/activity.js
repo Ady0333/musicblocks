@@ -8346,10 +8346,14 @@ class Activity {
                             console.debug(midi);
                             midiImportBlocks(midi);
                         } catch (err) {
-                            console.error(err);
-                            that.errorMsg(
-                                _("Cannot load project from the file. Please check the file type.")
-                            );
+                            console.error("MIDI import failed:", err);
+                            if (that && typeof that.errorMsg === "function") {
+                                that.errorMsg(
+                                    _(
+                                        "Cannot load project from the file. Please check the file type."
+                                    )
+                                );
+                            }
                         }
                     };
 
@@ -8449,10 +8453,12 @@ class Activity {
                         console.debug(midi);
                         midiImportBlocks(midi);
                     } catch (err) {
-                        console.error(err);
-                        that.errorMsg(
-                            _("Cannot load project from the file. Please check the file type.")
-                        );
+                        console.error("MIDI import failed:", err);
+                        if (that && typeof that.errorMsg === "function") {
+                            that.errorMsg(
+                                _("Cannot load project from the file. Please check the file type.")
+                            );
+                        }
                     }
                 };
 
