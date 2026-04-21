@@ -924,6 +924,13 @@ class Painter {
      * @param y - on-screen y coordinate of the point to where the turtle is moved
      */
     doSetXY(x, y) {
+        x = Number(x);
+        y = Number(y);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+            this.turtles.activity.errorMsg(NANERRORMSG);
+            return;
+        }
+
         this._processColor();
 
         if (!this._fillState) {
@@ -938,8 +945,8 @@ class Painter {
         const oy = this.turtles.screenY2turtleY(this.turtle.container.y);
 
         // New turtle point
-        const nx = Number(x);
-        const ny = Number(y);
+        const nx = x;
+        const ny = y;
 
         this._move(ox, oy, nx, ny, true);
         this._scheduleCanvasUpdate();
