@@ -1982,8 +1982,8 @@ class Logo {
                 logo._syncCounter++;
                 if (logo._syncCounter >= logo._YIELD_AFTER_SYNC_RUNS) {
                     logo._syncCounter = 0;
-                    setTimeout(() => {
-                        if (!logo.stopTurtle) {
+                    logo._timerManager.setGuardedTimeout(
+                        () =>
                             logo.runFromBlockNow(
                                 logo,
                                 turtle,
@@ -1991,9 +1991,10 @@ class Logo {
                                 isflow,
                                 passArg,
                                 queueStart
-                            );
-                        }
-                    }, 0);
+                            ),
+                        0,
+                        () => logo.stopTurtle
+                    );
                 } else {
                     logo.runFromBlockNow(logo, turtle, nextBlock, isflow, passArg, queueStart);
                 }
