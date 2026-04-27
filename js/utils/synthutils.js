@@ -1814,7 +1814,7 @@ function Synth() {
                 _effectsInFlight.set(synth, (_effectsInFlight.get(synth) || 0) + 1);
                 try {
                     synth.disconnect();
-                } catch (_) {
+                } catch (e) {
                     /* already disconnected */
                 }
                 const chainNodes = [];
