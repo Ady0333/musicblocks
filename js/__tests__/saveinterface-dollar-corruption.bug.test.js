@@ -1,55 +1,103 @@
-// BUG: SaveInterface.prepareHTML() uses String.prototype.replace with a string
-// second argument derived from user data. The JS spec interprets $&, $', $`,
-// and $$ as special patterns in that argument. escapeHTML() does not escape $,
-// so any user content containing $& silently corrupts the saved HTML file.
+/**
+ * @license
+ * MusicBlocks v3.4.1
+ * Copyright (C) 2025 Music Blocks Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+// BUG: SaveInterface.prepareHTML() previously passed a string second argument
+// to String.prototype.replace, which caused JS to interpret $&, $', $`, and $$
+// as special replacement patterns when those characters appeared in user data.
+// The fix uses the function form of .replace so dollar-sign patterns are never
+// interpreted. These tests exercise the real implementation to guard against
+// regressions.
 //
 // Affected code: js/SaveInterface.js lines 315-319
-// Root cause:    .replace(/{{ data }}/g, escapeHTML(data)) passes a string
-//                replacement — $& becomes the matched placeholder text.
 
-describe("BUG: String.prototype.replace interprets $& in user content, corrupting HTML saves", () => {
-    // Exact pattern used in SaveInterface.prepareHTML() at lines 315-319.
-    const buildHtml = (template, description, name, data) => {
-        return template
-            .replace(/{{ project_description }}/g, description)
-            .replace(/{{ project_name }}/g, name)
-            .replace(/{{ data }}/g, data);
-    };
+global._ = jest.fn(str => str);
+global.TITLESTRING = "Music Blocks";
+global.GUIDEURL = "Docs/guide/guide.html";
+global.jQuery = jest.fn(() => ({ on: jest.fn(), trigger: jest.fn() }));
+global.jQuery.noConflict = jest.fn(() => global.jQuery);
+global.window.jQuery = global.jQuery;
+global.docById = jest.fn();
+global.docByClass = jest.fn();
 
-    // Fixed version using the function form, which never interprets $ specials.
-    const buildHtmlFixed = (template, description, name, data) => {
-        return template
-            .replace(/{{ project_description }}/g, () => description)
-            .replace(/{{ project_name }}/g, () => name)
-            .replace(/{{ data }}/g, () => data);
-    };
+const { SaveInterface } = require("../SaveInterface");
+const { escapeHTML } = require("../utils/utils");
+global.escapeHTML = escapeHTML;
 
-    const template =
-        '<div>{{ project_description }}</div><div>{{ project_name }}</div><div class="code">{{ data }}</div>';
+const makeActivity = (name, description, data, image = "") => ({
+    PlanetInterface: {
+        getCurrentProjectName: jest.fn(() => name),
+        getCurrentProjectDescription: jest.fn(() => description),
+        getCurrentProjectImage: jest.fn(() => image)
+    },
+    prepareExport: jest.fn(() => data)
+});
 
-    test("BUG CONFIRMED: $& in data expands to matched placeholder, not the literal string", () => {
-        const corruptedHtml = buildHtml(template, "desc", "My Project", '{"text":"$&"}');
-        // $& is replaced with the matched text "{{ data }}", not the literal "$&"
-        expect(corruptedHtml).toContain('{"text":"{{ data }}"}');
-        expect(corruptedHtml).not.toContain('"$&"');
+describe("SaveInterface.prepareHTML — dollar-sign corruption regression", () => {
+    test("$& in project name is preserved literally in HTML output", () => {
+        const si = new SaveInterface(makeActivity("Win $& prize", "desc", "[]"));
+        const html = si.prepareHTML();
+        expect(html).toContain("Win $&amp; prize");
+        expect(html).not.toContain("{{ project_name }}");
     });
 
-    test("BUG CONFIRMED: $& in project name corrupts the name placeholder", () => {
-        const corruptedHtml = buildHtml(template, "desc", "Win $& prize", "[]");
-        // $& in name expands to "{{ project_name }}" — the placeholder text
-        expect(corruptedHtml).toContain("Win {{ project_name }} prize");
-        expect(corruptedHtml).not.toContain("Win $& prize");
+    test("$& in exported data is preserved literally in HTML output", () => {
+        const si = new SaveInterface(makeActivity("My Project", "desc", '{"text":"$&"}'));
+        const html = si.prepareHTML();
+        // escapeHTML encodes both " → &quot; and & → &amp;
+        expect(html).toContain("&quot;$&amp;&quot;");
+        expect(html).not.toContain("{{ data }}");
     });
 
-    test("fix: function form preserves $& literally without interpretation", () => {
-        const safeHtml = buildHtmlFixed(template, "desc", "My Project", '{"text":"$&"}');
-        expect(safeHtml).toContain('"$&"');
-        expect(safeHtml).not.toContain('"{{ data }}"');
+    test("user input 'Win $&!' is preserved exactly (not replaced with placeholder)", () => {
+        const si = new SaveInterface(makeActivity("Win $&!", "desc", "[]"));
+        const html = si.prepareHTML();
+        expect(html).toContain("Win $&amp;!");
+        expect(html).not.toContain("{{ project_name }}");
     });
 
-    test("fix: function form preserves $& in project name literally", () => {
-        const safeHtml = buildHtmlFixed(template, "desc", "Win $& prize", "[]");
-        expect(safeHtml).toContain("Win $& prize");
-        expect(safeHtml).not.toContain("Win {{ project_name }} prize");
+    test("$' (dollar-apostrophe) in data is preserved literally", () => {
+        const si = new SaveInterface(makeActivity("My Project", "desc", "price $' end"));
+        const html = si.prepareHTML();
+        expect(html).toContain("price $&#039; end");
+        expect(html).not.toContain("{{ data }}");
+    });
+
+    test("$` (dollar-backtick) in data is preserved literally", () => {
+        const si = new SaveInterface(makeActivity("My Project", "desc", "val $` end"));
+        const html = si.prepareHTML();
+        expect(html).toContain("val $` end");
+        expect(html).not.toContain("{{ data }}");
+    });
+
+    test("$$ in data is preserved literally (not collapsed to single $)", () => {
+        const si = new SaveInterface(makeActivity("My Project", "desc", "cost: $$100"));
+        const html = si.prepareHTML();
+        expect(html).toContain("cost: $$100");
+        expect(html).not.toContain("{{ data }}");
+    });
+
+    test("all four special patterns in a single data string are all preserved", () => {
+        const si = new SaveInterface(makeActivity("My Project", "desc", "a=$& b=$' c=$` d=$$"));
+        const html = si.prepareHTML();
+        expect(html).toContain("a=$&amp;");
+        expect(html).toContain("b=$&#039;");
+        expect(html).toContain("c=$`");
+        expect(html).toContain("d=$$");
     });
 });
